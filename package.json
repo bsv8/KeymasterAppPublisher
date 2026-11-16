@@ -1,0 +1,42 @@
+{
+  "name": "keymaster-app-publisher",
+  "version": "0.1.0",
+  "description": "Keymaster App 发布 Vite 插件：URL 来源证明与 Files 目录打包签名的构建期实现（本地签名，私钥不出本机）",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepublishOnly": "npm run typecheck"
+  },
+  "dependencies": {
+    "@noble/curves": "^2.2.0",
+    "@noble/hashes": "^2.2.0",
+    "parse5": "7.3.0"
+  },
+  "peerDependencies": {
+    "vite": "^5 || ^6 || ^7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "typescript": "^5.9.3",
+    "vite": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=20.19"
+  },
+  "license": "SEE LICENSE IN LICENSE"
+}
