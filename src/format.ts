@@ -4,8 +4,6 @@ import {sha256} from '@noble/hashes/sha2.js';
 import {publicationURL} from './display.js';
 export const PUBLICATION_META='keymaster-app';
 export const PUBLICATION_DOMAIN='keymaster.app-publication.v1';
-// Bound encoded record size, including the detached signature, in ASCII bytes.
-export const MAX_PUBLICATION_RECORD_BYTES=128*1024;
 export const MAX_ENTRY_BYTES=16*1024*1024;
 export const MAX_FILES_ENTRIES=100000;
 export const APP_FILE_BLOCK_SIZE=256*1024;
@@ -132,7 +130,7 @@ export function canonicalizeJson(value: unknown): string {
 /* ============== 来源解析（WHATWG URL 语义，Node 实现） ============== */
 
 export interface AppFileEntry {path:string;mime:string;size:number;seedhashhex:string}
-export interface Publication {version:1;kind:'url'|'files'|'both';appPublicKeyHex:string;name:string;description:string;url?:{address:string;icon:string};files?:{entrySeedhashhex:string;icon:string;files:AppFileEntry[]}}
+export interface Publication {version:1;appVersion:string;kind:'url'|'files'|'both';appPublicKeyHex:string;name:string;description:string;url?:{address:string;icon:string};files?:{entrySeedhashhex:string;icon:string;files:AppFileEntry[]}}
 export interface PublicationProof {publication:Publication;signatureHex:string}
 function fields(value:any,keys:string[]):void {if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).sort().join(',')!==keys.sort().join(','))throw new Error('publication fields invalid')}
 function text(value:unknown,max:number,required=true):string {if(typeof value!=='string'||value!==value.trim()||(required&&!value)||[...value].length>max||/[\u0000-\u001f\u007f-\u009f\ud800-\udfff]/u.test(value))throw new Error('publication text invalid');return value}
@@ -141,17 +139,16 @@ export function manifestPath(value:unknown):string {if(typeof value!=='string'||
 export function validatePublication(value:unknown):Publication {
  const p=value as Publication;const kind=p?.kind;
  if(!['url','files','both'].includes(kind))throw new Error('invalid publication kind');
- fields(p,['version','kind','appPublicKeyHex','name','description',...(kind!=='files'?['url']:[]),...(kind!=='url'?['files']:[])]);
- if(p.version!==1)throw new Error('invalid publication version');assertAppPublicKeyHex(p.appPublicKeyHex);text(p.name,120);text(p.description,2000,false);
+ fields(p,['version','appVersion','kind','appPublicKeyHex','name','description',...(kind!=='files'?['url']:[]),...(kind!=='url'?['files']:[])]);
+ validateAppVersion(p.appVersion);if(p.version!==1)throw new Error('invalid publication version');assertAppPublicKeyHex(p.appPublicKeyHex);text(p.name,120);text(p.description,2000,false);
  if(kind!=='files'){fields(p.url,['address','icon']);for(const v of [p.url!.address,p.url!.icon])if(publicationURL(v)!==v||v.length>8192)throw new Error('noncanonical publication URL')}
  if(kind!=='url'){fields(p.files,['entrySeedhashhex','icon','files']);seedhash(p.files!.entrySeedhashhex);seedhash(p.files!.icon);if(!Array.isArray(p.files!.files)||p.files!.files.length>MAX_FILES_ENTRIES)throw new Error('invalid manifest');let last='';for(const f of p.files!.files){fields(f,['path','mime','size','seedhashhex']);manifestPath(f.path);if(f.path<=last)throw new Error('manifest must be sorted and unique');last=f.path;text(f.mime,256);if(!Number.isSafeInteger(f.size)||f.size<0)throw new Error('invalid file size');seedhash(f.seedhashhex)}if(!p.files!.files.some(f=>f.seedhashhex===p.files!.icon))throw new Error('icon seed absent from manifest')}
  return p;
 }
 export function canonicalPublicationJSON(p:Publication):string{return canonicalizeJson(validatePublication(p))}
 export function signPublication(p:Publication,key:string):PublicationProof {return {publication:validatePublication(p),signatureHex:signHash(domainHash(PUBLICATION_DOMAIN,new TextEncoder().encode(canonicalPublicationJSON(p))),assertPrivKeyHex(key))}}
-export function encodePublication(proof:PublicationProof):string {fields(proof,['publication','signatureHex']);assertSignatureHex(proof.signatureHex);const content=base64UrlEncode(new TextEncoder().encode(canonicalPublicationJSON(proof.publication)))+'.'+proof.signatureHex;if(content.length>MAX_PUBLICATION_RECORD_BYTES)throw new Error('publication exceeds Connect record limit');return content}
+export function encodePublication(proof:PublicationProof):string {fields(proof,['publication','signatureHex']);assertSignatureHex(proof.signatureHex);const content=base64UrlEncode(new TextEncoder().encode(canonicalPublicationJSON(proof.publication)))+'.'+proof.signatureHex;return content}
 export function decodePublication(content:string):PublicationProof {
- if(content.length>MAX_PUBLICATION_RECORD_BYTES)throw new Error('publication exceeds Connect record limit');
  const m=/^([A-Za-z0-9_-]+)\.([0-9a-f]{128})$/.exec(content);if(!m)throw new Error('invalid publication encoding');
  const bytes=base64UrlDecode(m[1]);if(base64UrlEncode(bytes)!==m[1])throw new Error('noncanonical base64url');
  const json=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(bytes);const publication=validatePublication(JSON.parse(json));
@@ -195,4 +192,14 @@ export function masterSeedOfBytes(data: Uint8Array): { seed: Uint8Array; seedhas
   const seed = new Uint8Array(digests.length * 32);
   digests.forEach((d, i) => seed.set(d, i * 32));
   return { seed, seedhashhex: bytesToHex(sha256(seed)) };
+}
+
+/** 严格三段发布版本；按十进制整数比较，避免字符串排序及浮点精度问题。 */
+export function validateAppVersion(value: unknown): string {
+ if (typeof value !== "string" || !/^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(value)) throw new Error("Invalid appVersion");
+ return value;
+}
+export function compareAppVersions(a: string, b: string): number {
+ const left=validateAppVersion(a).split("."), right=validateAppVersion(b).split(".");
+ for(let i=0;i<3;i++){const x=left[i]!,y=right[i]!;if(x.length!==y.length)return x.length<y.length?-1:1;if(x!==y)return x<y?-1:1;}return 0;
 }

@@ -4,6 +4,7 @@ import path from 'node:path';
 import {secp256k1} from '@noble/curves/secp256k1.js';
 import {assertAppPublicKeyHex,masterSeedOfBytes,insertEmptyPublication,fillPublication,signPublication,readPublicationBytes,verifyPublication,verifyEntryBytes,type AppFileEntry,type Publication} from './format.js';
 export interface PackOptions {
+  appVersion: string;
  dir:string;privateKeyHex:string;mode:'url'|'files'|'both';name:string;description?:string;icon:string;url?:string;resourceBaseUrl?:string;mimeMap?:Record<string,string>;
 }
 export interface PackResult {
@@ -103,7 +104,7 @@ export function packDirectory(opts: PackOptions): PackResult {
   const icon=files.find(f=>f.path===display.icon);if(!icon)throw new Error('icon must exist in final build files');
   const templatePath=path.join(root,entry);
   const aBytes=insertEmptyPublication(fs.readFileSync(templatePath));
-  const payload:Publication={version:1,kind:opts.mode,appPublicKeyHex,name:display.name,description:display.description};
+  const payload:Publication={version:1,appVersion:opts.appVersion,kind:opts.mode,appPublicKeyHex,name:display.name,description:display.description};
   if(opts.mode!=='files') {const address=publicationURL(opts.url);payload.url={address,icon:iconURL(address,display.icon,opts.resourceBaseUrl)}}
   if(opts.mode!=='url')payload.files={entrySeedhashhex:masterSeedOfBytes(aBytes).seedhashhex,icon:icon.seedhashhex,files};
   const proof=signPublication(payload,privLower);const bBytes=fillPublication(aBytes,proof);

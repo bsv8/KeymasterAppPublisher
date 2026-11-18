@@ -4,12 +4,13 @@ import type {Plugin} from 'vite';
 import {loadKeyFile} from './keys.js';
 import {publicationDisplay,publicationURL} from './display.js';
 import {collectBuildFiles,packDirectory} from './pack.js';
-import {verifyEntryBytes,readPublicationBytes,verifyPublication,masterSeedOfBytes} from './format.js';
+import {verifyEntryBytes,readPublicationBytes,verifyPublication,masterSeedOfBytes,validateAppVersion} from './format.js';
 export type KeymasterPublisherMode = "url" | "files" | "both";
 
 export interface KeymasterPublisherOptions {
   /** url：仅 URL 来源证明；files：仅 Files 整包签名；both：先 URL 证明再整入口签名。 */
   mode: KeymasterPublisherMode;
+  appVersion: string;
   name: string;
   description?: string;
   icon: string;
@@ -26,6 +27,7 @@ export interface KeymasterPublisherOptions {
 
 export interface KeymasterPublishSummary {
   mode: KeymasterPublisherMode;
+  appVersion: string;
   appPublicKeyHex: string;
   origin?: string;
   indexseedhashhex?: string;
@@ -46,6 +48,7 @@ function resolveKeyFile(keyFile: string): string {
 
 export function keymasterPublisher(options: KeymasterPublisherOptions): Plugin {
   if (!options || typeof options !== "object") fail("options 必填");
+  validateAppVersion(options.appVersion);
   const mode = options.mode;
   if (mode !== "url" && mode !== "files" && mode !== "both") fail("mode 必须为 url|files|both");
   const keyFile = resolveKeyFile(options.keyFile);
@@ -93,8 +96,8 @@ export function keymasterPublisher(options: KeymasterPublisherOptions): Plugin {
         fs.cpSync(outAbs, candidate, { recursive: true });
         const entryRel = entry.split("/").join(path.sep);
         if (!fs.existsSync(path.join(candidate, entryRel))) fail(`入口文件缺失：${entry}`);
-        const packed=packDirectory({dir:candidate,privateKeyHex:key.privateKeyHex,mode,name:options.name,description:options.description,icon:options.icon,url:options.url,resourceBaseUrl:options.resourceBaseUrl});
-        let summary:KeymasterPublishSummary={mode,appPublicKeyHex:packed.appPublicKeyHex,origin:configuredOrigin,...mode!=='url'?{indexseedhashhex:packed.indexseedhashhex}:{},signatureHex:packed.signatureHex,files:packed.files.length,entryBytes:packed.entryBytes,totalBytes:packed.totalBytes};
+        const packed=packDirectory({dir:candidate,appVersion:options.appVersion,privateKeyHex:key.privateKeyHex,mode,name:options.name,description:options.description,icon:options.icon,url:options.url,resourceBaseUrl:options.resourceBaseUrl});
+        let summary:KeymasterPublishSummary={mode,appVersion:options.appVersion,appPublicKeyHex:packed.appPublicKeyHex,origin:configuredOrigin,...mode!=='url'?{indexseedhashhex:packed.indexseedhashhex}:{},signatureHex:packed.signatureHex,files:packed.files.length,entryBytes:packed.entryBytes,totalBytes:packed.totalBytes};
         verifyPublication(readPublicationBytes(fs.readFileSync(path.join(candidate,entryRel))),mode==='files'?undefined:options.url);
         const finalFiles = collectBuildFiles(candidate);
         if (mode === "url") {

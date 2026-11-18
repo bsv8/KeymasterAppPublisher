@@ -7,7 +7,7 @@ import { defineConfig } from 'vite';
 import { keymasterPublisher } from 'keymaster-app-publisher';
 
 export default defineConfig({
-  plugins: [keymasterPublisher({
+  plugins: [keymasterPublisher({appVersion:"0.1.2",
     mode: 'both', // url | files | both
     keyFile: '/本机已有/app.key.json',
     name: '我的应用',
@@ -28,4 +28,6 @@ url/both 必须提供完整 URL，由插件解析 canonical origin；files 无�
 开发使用 `npm install`、`npm run typecheck`、`npm run build`。工程验收运行 `npm run e2e:publisher`，发布格式跨语言向量运行 `npm run parity:app-publication`。协议正文见[应用发布与公钥身份](../BSV8_Engineering/docs/keymaster.cc/requirements/应用发布与公钥身份.md)。
 
 
-资料只从插件配置读取。名称必填、最多120 Unicode码点；介绍可选、最多2000码点。icon 必须是最终构建目录内真实普通文件的相对路径，三个模式均检查其存在。URL 图标按 resourceBaseUrl（缺省首页所在目录）逐段编码；Files 图标记录 MasterSeed seedhash，不是路径或普通 SHA256。源码已有发布记录或旧发布 meta 会明确失败。编码发布记录上限131072字节，超限构建失败；不删减 Both 文件清单。
+资料只从插件配置读取。名称必填、最多120 Unicode码点；介绍可选、最多2000码点。icon 必须是最终构建目录内真实普通文件的相对路径，三个模式均检查其存在。URL 图标按 resourceBaseUrl（缺省首页所在目录）逐段编码；Files 图标记录 MasterSeed seedhash，不是路径或普通 SHA256。源码已有发布记录或旧发布 meta 会明确失败。发布记录不设证明专用长度上限，只受入口 HTML 读取上限、清单项数与各传输通道通用帧限制约束；不删减 Both 文件清单。
+
+应用发布版本 `appVersion` 为必填签名字段，格式为 `0.1.2`（三段非负整数，不允许前导零、前缀或后缀），与格式字段 `version:1` 无关。同公钥高版本及同版本的后一次成功提交整份覆盖全部发布参数；低版本拒绝。当前最多一个 URL 与一个 Files 渠道，缺席渠道清除，用户权限和收藏不属于发布参数。
