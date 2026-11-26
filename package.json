@@ -1,5 +1,6 @@
 {
   "name": "keymaster-app-publisher",
+  "packageManager": "pnpm@11.5.1",
   "version": "0.1.0",
   "description": "Keymaster App 发布 Vite 插件：URL 来源证明与 Files 目录打包签名的构建期实现（本地签名，私钥不出本机）",
   "type": "module",
@@ -20,7 +21,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "prepublishOnly": "npm run typecheck"
+    "prepublishOnly": "pnpm run typecheck"
   },
   "dependencies": {
     "@noble/curves": "^2.2.0",

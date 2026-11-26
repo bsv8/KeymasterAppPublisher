@@ -25,7 +25,7 @@ url/both 必须提供完整 URL，由插件解析 canonical origin；files 无�
 
 构建日志输出摘要；可用 `manifestFile` 指定应用树外的机器可读摘要路径，父目录须已存在。应用树不写 keymaster-manifest.json。插件不连接钱包、不抓取网站、不上传市场、不执行应用代码、不启动服务，不提供 CLI 或密钥管理入口。市场页面或接口独立接受 URL、Files、组合提交。外部依赖运行时策略归 Client/宿主。
 
-开发使用 `npm install`、`npm run typecheck`、`npm run build`。工程验收运行 `npm run e2e:publisher`，发布格式跨语言向量运行 `npm run parity:app-publication`。协议正文见[应用发布与公钥身份](../BSV8_Engineering/docs/keymaster.cc/requirements/应用发布与公钥身份.md)。
+开发使用 `pnpm install`、`pnpm run typecheck`、`pnpm run build`。工程验收运行 `pnpm run e2e:publisher`，发布格式跨语言向量运行 `pnpm run parity:app-publication`。协议正文见[应用发布与公钥身份](../BSV8_Engineering/docs/keymaster.cc/requirements/应用发布与公钥身份.md)。
 
 
 资料只从插件配置读取。名称必填、最多120 Unicode码点；介绍可选、最多2000码点。icon 必须是最终构建目录内真实普通文件的相对路径，三个模式均检查其存在。URL 图标按 resourceBaseUrl（缺省首页所在目录）逐段编码；Files 图标记录 MasterSeed seedhash，不是路径或普通 SHA256。源码已有发布记录或旧发布 meta 会明确失败。发布记录不设证明专用长度上限，只受入口 HTML 读取上限、清单项数与各传输通道通用帧限制约束；不删减 Both 文件清单。
